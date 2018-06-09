@@ -1,2 +1,4 @@
 # ver
-Everything for job
+enough 
+done is done
+
