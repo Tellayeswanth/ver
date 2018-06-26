@@ -1,0 +1,118 @@
+SonarQube Scanner
+node {
+  stage('SCM') {
+    git 'https://github.com/foo/bar.git'
+  }
+  stage('SonarQube analysis') {
+    // requires SonarQube Scanner 2.8+
+    def scannerHome = tool 'SonarQube Scanner 2.8';
+    withSonarQubeEnv('My SonarQube Server') {
+      sh "${scannerHome}/bin/sonar-scanner"
+    }
+  }
+}
+SonarQube Scanner for Gradle
+node {
+  stage('SCM') {
+    git 'https://github.com/foo/bar.git'
+  }
+  stage('SonarQube analysis') {
+    withSonarQubeEnv('My SonarQube Server') {
+      // requires SonarQube Scanner for Gradle 2.1+
+      // It's important to add --info because of SONARJNKNS-281
+      sh './gradlew --info sonarqube'
+    }
+  }
+}
+SonarQube Scanner for Maven
+node {
+  stage('SCM') {
+    git 'https://github.com/foo/bar.git'
+  }
+  stage('SonarQube analysis') {
+    withSonarQubeEnv('My SonarQube Server') {
+      // requires SonarQube Scanner for Maven 3.2+
+      sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
+    }
+  }
+}
+SonarQube Scanner for MSBuild
+node {
+  stage('SCM') {
+    git 'https://github.com/foo/bar.git'
+  }
+  stage('Build + SonarQube analysis') {
+    def sqScannerMsBuildHome = tool 'Scanner for MSBuild 2.2'
+    withSonarQubeEnv('My SonarQube Server') {
+      // Due to SONARMSBRU-307 value of sonar.host.url and credentials should be passed on command line
+      bat "${sqScannerMsBuildHome}\\SonarQube.Scanner.MSBuild.exe begin /k:myKey /n:myName /v:1.0 /d:sonar.host.url=%SONAR_HOST_URL% /d:sonar.login=%SONAR_AUTH_TOKEN%"
+      bat 'MSBuild.exe /t:Rebuild'
+      bat "${sqScannerMsBuildHome}\\SonarQube.Scanner.MSBuild.exe end"
+    }
+  }
+}
+Pause pipeline until quality gate is computed
+The waitForQualityGate step will pause the pipeline until SonarQube analysis is completed and returns quality gate status.
+
+Pre-requisites:
+
+SonarQube server 6.2+ (need webhook feature)
+Configure a webhook in your SonarQube server pointing to <your Jenkins instance>/sonarqube-webhook/ (info) The trailing slash is mandatory with SonarQube 6.2 and 6.3!
+Use withSonarQubeEnv step in your pipeline (so that SonarQube taskId is correctly attached to the pipeline context).
+
+Example (scripted pipeline):
+
+Wait for Quality Gate under Maven (scripted)
+node {
+  stage('SCM') {
+    git 'https://github.com/foo/bar.git'
+  }
+  stage('SonarQube analysis') {
+    withSonarQubeEnv('My SonarQube Server') {
+      sh 'mvn clean package sonar:sonar'
+    } // SonarQube taskId is automatically attached to the pipeline context
+  }
+}
+  
+// No need to occupy a node
+stage("Quality Gate"){
+  timeout(time: 1, unit: 'HOURS') { // Just in case something goes wrong, pipeline will be killed after a timeout
+    def qg = waitForQualityGate() // Reuse taskId previously collected by withSonarQubeEnv
+    if (qg.status != 'OK') {
+      error "Pipeline aborted due to quality gate failure: ${qg.status}"
+    }
+  }
+}
+Thanks to the webhook, the step is implemented in a very lightweight way: no need to occupy a node, and it doesn't prevent Jenkins to restart (step will be restored after restart).
+
+Example (declarative pipeline):
+
+Wait for Quality Gate under Maven (declarative)
+pipeline {
+    agent any
+    stages {
+        stage('SCM') {
+            steps {
+                git url: 'https://github.com/foo/bar.git'
+            }
+        }
+        stage('build && SonarQube analysis') {
+            steps {
+                // Optionally use a Maven environment you've configured already
+                withMaven(maven:'Maven 3.5') {
+                    sh 'mvn clean package sonar:sonar'
+                }
+            }
+        }
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
+                    // true = set pipeline to UNSTABLE, false = don't
+                    // Requires SonarQube Scanner for Jenkins 2.7+
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
+}
