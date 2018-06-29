@@ -1,0 +1,128 @@
+Ansible Installation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Master Configuration(ubuntu)
+
+1.http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#control-machine-requirements
+2. Check for Python by typing python
+ 
+
+
+
+
+
+
+
+
+
+
+3. Create User <ansible>
+
+ 
+
+4.Give sudo privilages to the user ansible
+
+ 
+
+ 
+
+5. Set Password authentication to “yes”
+ 
+
+ 
+
+6. Service ssh restart
+
+ 
+
+
+Node 1(Ubuntu)
+1.	Check for python (python is the only prereq for node)
+2.	Create User <ansible>
+ 
+
+3.Give SUDO previlages to ansible
+
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+4.Change password authentication to “yes”( vi /etc/ssh/sshd_config)
+
+ 
+
+
+ 
+
+
+
+
+
+
+
+
+	SSh-keygen (In Master user ansible)
+
+ 
+
+
+
+ 
+
+ 
+
+
+Node 2
+1.	Check for python 
+
+2.	Adduser ansible
+ 
+
+3.	Add ansible to sudo group
+ 
+
+ 
+4.	Change password authentication to “yes”
+
+ 
+
+ 
+
+
+5.	Restart SSH(service ssh restart)
+
+
+
+Master(ansible User)
+
+ 
+ ssh ansible@privateDNS
+
+ 
+
+
